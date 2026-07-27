@@ -96,4 +96,25 @@ describe('ControlRenderer', () => {
       aperture: 'f/8', focus: '0.9m', backlight: true,
     });
   });
+
+  it('includes the visible on/off text in the accessible name', async () => {
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <ControlRenderer
+        controls={getCamera('olympus-xa').controls}
+        value={{ aperture: 'f/8', focus: '0.9m', backlight: false }}
+        onChange={onChange}
+      />,
+    );
+    expect(screen.getByRole('switch', { name: /backlight.*: off/i })).toBeInTheDocument();
+
+    rerender(
+      <ControlRenderer
+        controls={getCamera('olympus-xa').controls}
+        value={{ aperture: 'f/8', focus: '0.9m', backlight: true }}
+        onChange={onChange}
+      />,
+    );
+    expect(screen.getByRole('switch', { name: /backlight.*: on/i })).toBeInTheDocument();
+  });
 });

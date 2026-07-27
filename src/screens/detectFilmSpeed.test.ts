@@ -30,4 +30,21 @@ describe('detectFilmSpeed', () => {
     expect(detectFilmSpeed('Ilford HP5 Plus')).toBeNull();
     expect(detectFilmSpeed('')).toBeNull();
   });
+
+  it('detects nothing when the text names two different speeds', () => {
+    // Setting box speed to 1600 here would silence the push warning for a
+    // real 1-stop push — the opposite of what the app is for.
+    expect(detectFilmSpeed('Kodak Portra 800 pushed to 1600')).toBeNull();
+    expect(detectFilmSpeed('Kodak Gold 200 batch 1600')).toBeNull();
+    expect(detectFilmSpeed('Kodak Portra 400 and Fuji 100')).toBeNull();
+  });
+
+  it('is not confused by the same speed appearing twice', () => {
+    expect(detectFilmSpeed('Kodak Tri-X 400 (400 in stock)')).toBe(400);
+  });
+
+  it('detects the speeds that were previously missing from the list', () => {
+    expect(detectFilmSpeed('Fomapan 1000')).toBe(1000);
+    expect(detectFilmSpeed('Adox CMS 20')).toBe(20);
+  });
 });

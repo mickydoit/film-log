@@ -3,18 +3,22 @@ import { PasscodeGate } from './components/PasscodeGate';
 import { Shelf } from './screens/Shelf';
 import { LoadRoll } from './screens/LoadRoll';
 import { LogShot } from './screens/LogShot';
+import { RollView } from './screens/RollView';
+import { AllRolls } from './screens/AllRolls';
 import type { CameraId } from './cameras';
 import type { Roll } from './lib/types';
 
 type View =
   | { name: 'shelf' }
   | { name: 'load'; cameraId: CameraId }
-  | { name: 'log'; roll: Roll };
+  | { name: 'log'; roll: Roll }
+  | { name: 'roll'; roll: Roll }
+  | { name: 'rolls' };
 
 export default function App() {
   const [view, setView] = useState<View>({ name: 'shelf' });
-  // Bumped to force a remount, so a screen refetches its data.
   const [nonce, setNonce] = useState(0);
+  const home = () => { setNonce(n => n + 1); setView({ name: 'shelf' }); };
 
   return (
     <PasscodeGate>
@@ -22,8 +26,8 @@ export default function App() {
         <Shelf
           key={nonce}
           onLogShot={roll => setView({ name: 'log', roll })}
-          onOpenRoll={() => {}}
-          onBrowseRolls={() => {}}
+          onOpenRoll={roll => setView({ name: 'roll', roll })}
+          onBrowseRolls={() => setView({ name: 'rolls' })}
           onLoadRoll={cameraId => setView({ name: 'load', cameraId })}
         />
       )}
@@ -37,14 +41,22 @@ export default function App() {
       )}
 
       {view.name === 'log' && (
-        // The nonce key remounts LogShot after each save, so it refetches and
-        // lands on the next frame. Logging six frames must not mean six
-        // round-trips through the shelf.
         <LogShot
           key={nonce}
           roll={view.roll}
           onSaved={() => setNonce(n => n + 1)}
-          onCancel={() => { setNonce(n => n + 1); setView({ name: 'shelf' }); }}
+          onCancel={home}
+        />
+      )}
+
+      {view.name === 'roll' && (
+        <RollView roll={view.roll} onBack={home} onOpenFrame={() => {}} />
+      )}
+
+      {view.name === 'rolls' && (
+        <AllRolls
+          onBack={home}
+          onOpenRoll={roll => setView({ name: 'roll', roll })}
         />
       )}
     </PasscodeGate>

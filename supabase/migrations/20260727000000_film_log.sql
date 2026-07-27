@@ -35,8 +35,9 @@ create table if not exists public.film_shots (
   unique (roll_id, frame_number)
 );
 
-create index if not exists film_shots_roll_frame_idx
-  on public.film_shots (roll_id, frame_number);
+-- No separate index on (roll_id, frame_number) here: the `unique (roll_id, frame_number)`
+-- constraint above already creates an identical btree index
+-- (film_shots_roll_id_frame_number_key), so a duplicate would only add write overhead.
 
 create index if not exists film_rolls_status_idx
   on public.film_rolls (status, loaded_at desc);

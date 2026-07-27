@@ -82,3 +82,13 @@ button { font: inherit; color: inherit; }
   background: var(--bg); border: 1px solid var(--line);
   border-radius: .6rem; color: var(--text);
 }
+.estimate {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: .7rem; padding: .75rem 1rem; margin-bottom: 1.25rem;
+}
+.estimate-warn { border-color: #5c5136; background: #2c2820; }
+.estimate-label {
+  margin: 0; font-size: .75rem; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--muted);
+}
+.estimate-value { margin: .1rem 0; font-size: 2rem; font-variant-numeric: tabular-nums; }

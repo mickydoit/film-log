@@ -32,4 +32,9 @@ describe('pushPullLabel', () => {
     // Box 160 dialled to 400 — 1.322 stops.
     expect(pushPullLabel(160, 400)).toBe('Pushed 1⅓ stops — tell the lab.');
   });
+
+  it('says nothing when two speeds differ by a hair', () => {
+    // Not a push — just a box speed typed slightly off.
+    expect(pushPullLabel(195, 200)).toBeNull();
+  });
 });

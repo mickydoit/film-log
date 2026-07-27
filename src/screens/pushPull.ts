@@ -15,6 +15,10 @@ export function pushPullLabel(boxIso: number, isoSet: number): string | null {
   const direction = stops > 0 ? 'Pushed' : 'Pulled';
   const magnitude = Math.abs(stops);
 
+  // Two speeds that differ by a hair are the same speed in practice. Without
+  // this, box 195 shot at 200 reads "Pushed 0 stops", which is nonsense.
+  if (magnitude < 0.06) return null;
+
   // Split into whole stops plus a fraction, so real dial combinations above
   // one stop read as photographers say them. Box 125 shot at 400 is 1.678
   // stops — "1⅔ stops", not "1.7 stops", which is not lab language.

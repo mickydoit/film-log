@@ -4,6 +4,24 @@ import { createRoll } from '../lib/rolls';
 import type { Roll } from '../lib/types';
 import { pushPullLabel } from './pushPull';
 
+/**
+ * Real film speeds. The film name is matched against these rather than
+ * against any 2-4 digit number, because names carry other numbers: "Kodak
+ * Gold 200 35mm" would otherwise read as ISO 35, and a wrong box speed makes
+ * the app hand the lab a false developing instruction.
+ */
+const FILM_SPEEDS = [
+  25, 32, 50, 64, 100, 125, 160, 200, 250, 320,
+  400, 500, 640, 800, 1250, 1600, 3200,
+];
+
+/** The last real film speed named anywhere in the text, if any. */
+export function detectFilmSpeed(name: string): number | null {
+  const numbers = [...name.matchAll(/\d{2,4}/g)].map(m => Number(m[0]));
+  const speeds = numbers.filter(n => FILM_SPEEDS.includes(n));
+  return speeds.length > 0 ? speeds[speeds.length - 1] : null;
+}
+
 const COMMON_STOCKS = [
   'Kodak Gold 200', 'Kodak ColorPlus 200', 'Kodak Portra 400',
   'Kodak Ultramax 400', 'Ilford HP5 Plus 400', 'Ilford XP2 400',
@@ -58,14 +76,10 @@ export function LoadRoll({
           value={stock}
           onChange={e => {
             setStock(e.target.value);
-            // Allow a letter suffix: "Cinestill 800T" and "Tri-X 400TX" are
-            // ISO 800 and 400. Without this the value silently stays at the
-            // default, and the push/pull warning then tells the lab to
-            // develop a roll that was actually shot at box speed.
-            const iso = /(\d{2,4})\s*[A-Za-z]{0,3}\s*$/.exec(e.target.value);
+            const iso = detectFilmSpeed(e.target.value);
             if (iso) {
-              setBoxIso(Number(iso[1]));
-              setIsoSet(Number(iso[1]));
+              setBoxIso(iso);
+              setIsoSet(iso);
               setIsoDetected(true);
             } else {
               setIsoDetected(false);

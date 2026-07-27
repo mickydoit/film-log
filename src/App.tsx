@@ -1,3 +1,9 @@
+import { PasscodeGate } from './components/PasscodeGate';
+
 export default function App() {
-  return <main><h1>Film Log</h1></main>;
+  return (
+    <PasscodeGate>
+      <main><h1>Film Log</h1></main>
+    </PasscodeGate>
+  );
 }

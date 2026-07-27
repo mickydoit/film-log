@@ -45,3 +45,11 @@ button { font: inherit; color: inherit; }
 }
 .toggle[aria-checked='true'] { background: var(--accent); color: #171512; font-weight: 600; }
 .hint { margin: .5rem 0 0; font-size: .8rem; color: var(--muted); }
+.passcode { display: grid; place-content: center; min-height: 90vh; gap: 1rem; }
+.passcode form { display: flex; gap: .5rem; }
+.passcode input, .passcode button {
+  min-height: 3rem; padding: 0 1rem;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: .6rem; color: var(--text);
+}
+.error { color: #e0a5a5; }

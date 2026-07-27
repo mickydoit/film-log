@@ -15,15 +15,18 @@ export function pushPullLabel(boxIso: number, isoSet: number): string | null {
   const direction = stops > 0 ? 'Pushed' : 'Pulled';
   const magnitude = Math.abs(stops);
 
-  const whole = Math.round(magnitude);
-  const isWhole = Math.abs(magnitude - whole) < 0.05;
+  // Split into whole stops plus a fraction, so real dial combinations above
+  // one stop read as photographers say them. Box 125 shot at 400 is 1.678
+  // stops — "1⅔ stops", not "1.7 stops", which is not lab language.
+  const whole = Math.floor(magnitude + 0.06);
+  const remainder = magnitude - whole;
+  const fraction = FRACTIONS.find(([value]) => Math.abs(remainder - value) < 0.06);
 
-  if (isWhole) {
-    return `${direction} ${whole} stop${whole === 1 ? '' : 's'} — tell the lab.`;
-  }
+  let amount: string;
+  if (remainder < 0.06) amount = String(whole);
+  else if (fraction) amount = whole > 0 ? `${whole}${fraction[1]}` : fraction[1];
+  else amount = magnitude.toFixed(1);
 
-  const fraction = FRACTIONS.find(([value]) => Math.abs(magnitude - value) < 0.06);
-  if (fraction) return `${direction} ${fraction[1]} stop — tell the lab.`;
-
-  return `${direction} ${magnitude.toFixed(1)} stops — tell the lab.`;
+  const singular = amount === '1' || (whole === 0 && Boolean(fraction));
+  return `${direction} ${amount} stop${singular ? '' : 's'} — tell the lab.`;
 }

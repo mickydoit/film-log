@@ -22,6 +22,7 @@ export function LoadRoll({
   const [boxIso, setBoxIso] = useState(200);
   const [isoSet, setIsoSet] = useState(200);
   const [exposures, setExposures] = useState(36);
+  const [isoDetected, setIsoDetected] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,8 +58,18 @@ export function LoadRoll({
           value={stock}
           onChange={e => {
             setStock(e.target.value);
-            const iso = /(\d{2,4})\s*$/.exec(e.target.value);
-            if (iso) { setBoxIso(Number(iso[1])); setIsoSet(Number(iso[1])); }
+            // Allow a letter suffix: "Cinestill 800T" and "Tri-X 400TX" are
+            // ISO 800 and 400. Without this the value silently stays at the
+            // default, and the push/pull warning then tells the lab to
+            // develop a roll that was actually shot at box speed.
+            const iso = /(\d{2,4})\s*[A-Za-z]{0,3}\s*$/.exec(e.target.value);
+            if (iso) {
+              setBoxIso(Number(iso[1]));
+              setIsoSet(Number(iso[1]));
+              setIsoDetected(true);
+            } else {
+              setIsoDetected(false);
+            }
           }}
           list="stocks"
           placeholder="Kodak Gold 200"
@@ -73,10 +84,14 @@ export function LoadRoll({
         <legend>Box speed</legend>
         <input
           className="text-input" type="number" value={boxIso}
-          onChange={e => setBoxIso(Number(e.target.value))}
+          onChange={e => { setBoxIso(Number(e.target.value)); setIsoDetected(false); }}
           aria-label="Box ISO"
         />
-        <p className="hint">What the film actually is, printed on the canister.</p>
+        <p className="hint">
+          {isoDetected
+            ? 'Read from the film name — check it matches the canister.'
+            : 'What the film actually is, printed on the canister.'}
+        </p>
       </fieldset>
 
       <fieldset className="control">

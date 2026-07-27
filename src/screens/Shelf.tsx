@@ -45,7 +45,11 @@ export function Shelf({
             <h2>{camera.name}</h2>
             <p className="muted">{camera.lens}</p>
 
-            {roll ? (
+            {error ? (
+              // Never imply the camera is empty when we simply could not
+              // check — that invites loading a second roll onto loaded film.
+              <p className="muted">Couldn't check this camera.</p>
+            ) : roll ? (
               <>
                 <p className="loaded">
                   {roll.film_stock} @ ISO {roll.iso_set}

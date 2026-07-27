@@ -22,7 +22,14 @@ describe('pushPullLabel', () => {
     expect(pushPullLabel(100, 125)).toBe('Pushed ⅓ stop — tell the lab.');
   });
 
-  it('warns when the difference is not a standard amount', () => {
-    expect(pushPullLabel(100, 160)).toMatch(/tell the lab/i);
+  it('names the exact fraction rather than just mentioning the lab', () => {
+    expect(pushPullLabel(100, 160)).toBe('Pushed ⅔ stop — tell the lab.');
+  });
+
+  it('reads whole-plus-fraction pushes the way a lab would say them', () => {
+    // Box 125 film dialled to 400 on the Pentax 17 — 1.678 stops.
+    expect(pushPullLabel(125, 400)).toBe('Pushed 1⅔ stops — tell the lab.');
+    // Box 160 dialled to 400 — 1.322 stops.
+    expect(pushPullLabel(160, 400)).toBe('Pushed 1⅓ stops — tell the lab.');
   });
 });

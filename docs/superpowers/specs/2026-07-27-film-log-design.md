@@ -221,7 +221,10 @@ The result is snapped to the nearest real shutter speed, clamped to the XA's
 10s–1/500 range, and flagged when the scene falls outside what the camera can
 handle. Below 1/30 it raises a camera-shake warning.
 
-Displayed live while logging: *"f/2.8, overcast, ISO 400 → roughly 1/125."*
+Displayed live while logging: *"f/2.8, indoors, ISO 400 → roughly 1/125."*
+
+Worked example: EV100 for `indoors` is 8; ISO 400 adds 2 stops → EV_scene 10.
+t = 2.8² / 2¹⁰ = 7.84 / 1024 = 1/131 → snapped to **1/125**.
 Presented as an estimate, because scene reflectance varies and the XA's meter is
 centre-weighted.
 

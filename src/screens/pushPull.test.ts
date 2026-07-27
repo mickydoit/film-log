@@ -1,0 +1,28 @@
+import { describe, it, expect } from 'vitest';
+import { pushPullLabel } from './pushPull';
+
+describe('pushPullLabel', () => {
+  it('says nothing when the film is shot at box speed', () => {
+    expect(pushPullLabel(200, 200)).toBeNull();
+  });
+
+  it('describes a one stop push', () => {
+    expect(pushPullLabel(200, 400)).toBe('Pushed 1 stop — tell the lab.');
+  });
+
+  it('describes a two stop push', () => {
+    expect(pushPullLabel(400, 1600)).toBe('Pushed 2 stops — tell the lab.');
+  });
+
+  it('describes a one stop pull', () => {
+    expect(pushPullLabel(400, 200)).toBe('Pulled 1 stop — tell the lab.');
+  });
+
+  it('handles fractional stops', () => {
+    expect(pushPullLabel(100, 125)).toBe('Pushed ⅓ stop — tell the lab.');
+  });
+
+  it('warns when the difference is not a standard amount', () => {
+    expect(pushPullLabel(100, 160)).toMatch(/tell the lab/i);
+  });
+});

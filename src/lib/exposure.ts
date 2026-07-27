@@ -45,9 +45,15 @@ const XA_SPEEDS: { seconds: number; label: string }[] = [
   { seconds: 1 / 500, label: '1/500' },
 ];
 
-const SLOWEST = XA_SPEEDS[0];
-const FASTEST = XA_SPEEDS[XA_SPEEDS.length - 1];
 const SHAKE_THRESHOLD = 1 / 30;
+/**
+ * How far past the camera's range a scene must fall before it is genuinely
+ * a problem. Interior values already tolerate up to ~0.5 stop of rounding,
+ * so anything under this is within normal exposure latitude and must not be
+ * reported as an error — f/16 at ISO 400 in bright sun lands 0.03 stops past
+ * 1/500 and is a correctly exposed frame, not an overexposed one.
+ */
+const RANGE_TOLERANCE_STOPS = 0.75;
 
 export type ShutterEstimate = {
   label: string;
@@ -87,28 +93,32 @@ export function estimateShutter(input: {
   const evScene = lightSpec.ev100 + Math.log2(iso / 100) - compensationEv;
   const ideal = (n * n) / Math.pow(2, evScene);
 
-  if (ideal > SLOWEST.seconds) {
-    return {
-      ...SLOWEST,
-      outOfRange: 'too-dark',
-      shakeRisk: true,
-      note: `Too dark for this aperture — the XA tops out at 10s, so expect underexposure. Open up the aperture or use faster film.`,
-    };
-  }
+  const nearest = XA_SPEEDS.reduce((best, speed) =>
+    Math.abs(Math.log2(speed.seconds / ideal)) <
+    Math.abs(Math.log2(best.seconds / ideal)) ? speed : best,
+  );
 
-  if (ideal < FASTEST.seconds) {
+  // Positive: the nearest available speed is SLOWER than ideal, so the scene is
+  // too bright for the camera. Negative: too dark.
+  const deviationStops = Math.log2(nearest.seconds / ideal);
+
+  if (deviationStops > RANGE_TOLERANCE_STOPS) {
     return {
-      ...FASTEST,
+      ...nearest,
       outOfRange: 'too-bright',
       shakeRisk: false,
       note: `Too bright for this aperture — the XA stops at 1/500, so expect overexposure. Stop down or use slower film.`,
     };
   }
 
-  const nearest = XA_SPEEDS.reduce((best, speed) =>
-    Math.abs(Math.log2(speed.seconds / ideal)) <
-    Math.abs(Math.log2(best.seconds / ideal)) ? speed : best,
-  );
+  if (deviationStops < -RANGE_TOLERANCE_STOPS) {
+    return {
+      ...nearest,
+      outOfRange: 'too-dark',
+      shakeRisk: true,
+      note: `Too dark for this aperture — the XA tops out at 10s, so expect underexposure. Open up the aperture or use faster film.`,
+    };
+  }
 
   const shakeRisk = nearest.seconds >= SHAKE_THRESHOLD;
 

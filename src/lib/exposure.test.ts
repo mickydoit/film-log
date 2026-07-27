@@ -41,6 +41,9 @@ describe('estimateShutter', () => {
     const wide = estimateShutter({ aperture: 'f/8', iso: 100, light: 'overcast' });
     const narrow = estimateShutter({ aperture: 'f/11', iso: 100, light: 'overcast' });
     expect(narrow.seconds).toBeGreaterThan(wide.seconds);
+    // f/8 to f/11 is one stop, so narrow should be approximately 2x wider (longer exposure).
+    // Allow tolerance for discrete shutter speed quantization.
+    expect(narrow.seconds / wide.seconds).toBeCloseTo(2, 0);
   });
 
   it('gets faster as film speed increases', () => {
@@ -84,5 +87,31 @@ describe('estimateShutter', () => {
       .toMatch(/^1\//);
     expect(estimateShutter({ aperture: 'f/22', iso: 25, light: 'night' }).label)
       .toMatch(/s$/);
+  });
+
+  it('treats Sunny 16 on faster film as correctly exposed, not overexposed', () => {
+    // f/16, bright sun, ISO 400 lands 0.03 stops past 1/500 — the textbook
+    // "extend Sunny 16 for the film speed" case, not an error.
+    const est = estimateShutter({ aperture: 'f/16', iso: 400, light: 'bright-sun' });
+    expect(est.label).toBe('1/500');
+    expect(est.outOfRange).toBe('none');
+  });
+
+  it('still flags a scene genuinely beyond the fastest shutter', () => {
+    const est = estimateShutter({ aperture: 'f/2.8', iso: 800, light: 'bright-sun' });
+    expect(est.outOfRange).toBe('too-bright');
+  });
+
+  it('flags camera shake at exactly 1/30', () => {
+    // f/4, indoors, ISO 200 -> EV 9 -> 1/32 -> snaps to 1/30.
+    const est = estimateShutter({ aperture: 'f/4', iso: 200, light: 'indoors' });
+    expect(est.label).toBe('1/30');
+    expect(est.shakeRisk).toBe(true);
+  });
+
+  it('does not flag shake at 1/60', () => {
+    const est = estimateShutter({ aperture: 'f/2.8', iso: 200, light: 'indoors' });
+    expect(est.label).toBe('1/60');
+    expect(est.shakeRisk).toBe(false);
   });
 });

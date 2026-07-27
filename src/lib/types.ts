@@ -16,6 +16,7 @@ export type Roll = {
   finished_at: string | null;
   lab: string | null;
   dev_notes: string | null;
+  created_at: string;
 };
 
 export type Critique = {
@@ -44,6 +45,11 @@ export type Shot = {
   scan_path: string | null;
   ai_critique: Critique | null;
   my_notes: string | null;
+  created_at: string;
 };
 
-export type NewShot = Omit<Shot, 'id' | 'scan_path' | 'ai_critique' | 'my_notes'>;
+/** What the app supplies when logging a frame; the database fills the rest. */
+export type NewShot = Omit<
+  Shot,
+  'id' | 'scan_path' | 'ai_critique' | 'my_notes' | 'created_at'
+>;

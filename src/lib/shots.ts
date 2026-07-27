@@ -26,10 +26,19 @@ export async function updateShot(id: string, patch: Partial<Shot>): Promise<Shot
   return data as Shot;
 }
 
-/** One past the highest frame logged, capped at the roll's capacity. */
-export function nextFrameNumber(shots: Shot[], capacity: number): number {
-  const highest = shots.reduce((max, s) => Math.max(max, s.frame_number), 0);
-  return Math.min(highest + 1, capacity);
+/**
+ * One past the highest frame logged. Deliberately NOT capped at capacity:
+ * capping would hand back a frame number that is already used, and the save
+ * would fail on the unique constraint with nothing explaining why. Callers
+ * check isRollFull and say so plainly instead.
+ */
+export function nextFrameNumber(shots: Shot[]): number {
+  return shots.reduce((max, s) => Math.max(max, s.frame_number), 0) + 1;
+}
+
+/** True when every frame on the roll has been logged. */
+export function isRollFull(shots: Shot[], capacity: number): boolean {
+  return nextFrameNumber(shots) > capacity;
 }
 
 /**

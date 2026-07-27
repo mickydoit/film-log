@@ -40,21 +40,21 @@ describe('offline queue', () => {
   });
 
   it('stores a shot that could not be sent', () => {
-    queueShot(shot);
+    expect(queueShot(shot)).toBe(true);
     expect(queuedCount()).toBe(1);
     expect(JSON.parse(localStorage.getItem(QUEUE_KEY)!)).toHaveLength(1);
   });
 
   it('keeps queued shots in the order they were taken', () => {
-    queueShot(shot);
-    queueShot({ ...shot, frame_number: 4 });
+    expect(queueShot(shot)).toBe(true);
+    expect(queueShot({ ...shot, frame_number: 4 })).toBe(true);
     const stored = JSON.parse(localStorage.getItem(QUEUE_KEY)!);
     expect(stored.map((s: any) => s.frame_number)).toEqual([3, 4]);
   });
 
   it('empties the queue when every shot sends successfully', async () => {
-    queueShot(shot);
-    queueShot({ ...shot, frame_number: 4 });
+    expect(queueShot(shot)).toBe(true);
+    expect(queueShot({ ...shot, frame_number: 4 })).toBe(true);
     const send = vi.fn().mockResolvedValue(undefined);
 
     const sent = await flushQueue(send);
@@ -65,9 +65,9 @@ describe('offline queue', () => {
   });
 
   it('keeps the failing shot and everything after it', async () => {
-    queueShot(shot);
-    queueShot({ ...shot, frame_number: 4 });
-    queueShot({ ...shot, frame_number: 5 });
+    expect(queueShot(shot)).toBe(true);
+    expect(queueShot({ ...shot, frame_number: 4 })).toBe(true);
+    expect(queueShot({ ...shot, frame_number: 5 })).toBe(true);
     const send = vi.fn()
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(new Error('offline'));
@@ -83,5 +83,69 @@ describe('offline queue', () => {
   it('survives corrupted storage rather than crashing the app', () => {
     localStorage.setItem(QUEUE_KEY, 'not json');
     expect(queuedCount()).toBe(0);
+  });
+
+  it('does not start a second flush while one is already running', async () => {
+    expect(queueShot(shot)).toBe(true);
+    expect(queueShot({ ...shot, frame_number: 4 })).toBe(true);
+    let release: () => void = () => {};
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    const send = vi.fn().mockImplementation(async () => { await gate; });
+
+    const first = flushQueue(send);
+    const second = flushQueue(send);
+    release();
+    const [a, b] = await Promise.all([first, second]);
+
+    // The second call joins the first rather than resending anything.
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(a).toBe(2);
+    expect(b).toBe(2);
+    expect(queuedCount()).toBe(0);
+  });
+
+  it('keeps a shot logged while a flush was in progress', async () => {
+    expect(queueShot(shot)).toBe(true);
+    let release: () => void = () => {};
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    const send = vi.fn().mockImplementation(async () => { await gate; });
+
+    const flushing = flushQueue(send);
+    expect(queueShot({ ...shot, frame_number: 9 })).toBe(true);   // logged mid-flush
+    release();
+    await flushing;
+
+    const remaining = JSON.parse(localStorage.getItem(QUEUE_KEY)!);
+    expect(remaining.map((s: any) => s.frame_number)).toEqual([9]);
+  });
+
+  it('reports failure instead of throwing when storage refuses the write', () => {
+    // Adapt to our vi.stubGlobal localStorage: spy on the setItem we created
+    const store: { [key: string]: string } = {};
+    const setItemFn = vi.fn((key: string, value: string) => {
+      throw new Error('QuotaExceededError');
+    });
+
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => store[key] ?? null,
+      setItem: setItemFn,
+      removeItem: (key: string) => {
+        delete store[key];
+      },
+      clear: () => {
+        Object.keys(store).forEach(key => {
+          delete store[key];
+        });
+      },
+      key: (index: number) => Object.keys(store)[index] ?? null,
+      length: Object.keys(store).length,
+    });
+
+    expect(() => queueShot(shot)).not.toThrow();
+    expect(queueShot(shot)).toBe(false);
+  });
+
+  it('reports success when the shot is stored', () => {
+    expect(queueShot(shot)).toBe(true);
   });
 });

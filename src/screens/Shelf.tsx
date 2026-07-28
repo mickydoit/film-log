@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CAMERAS, type CameraId } from '../cameras';
 import { activeRolls } from '../lib/rolls';
+import { Wordmark } from '../components/Wordmark';
 import type { Roll } from '../lib/types';
 import { pushPullLabel } from './pushPull';
 import { queuedCount } from '../lib/queue';
@@ -24,8 +25,10 @@ export function Shelf({
 
   return (
     <main>
+      <Wordmark tagline="Olympus XA · Pentax 17" />
+
       <header className="shelf-head">
-        <h1>Film Log</h1>
+        <h2>Cameras</h2>
         <button type="button" className="link" onClick={onBrowseRolls}>
           All rolls
         </button>

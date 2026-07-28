@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { sha256Hex, expectedHash, UNLOCK_KEY } from '../lib/passcode';
+import { Wordmark } from './Wordmark';
 
 export function PasscodeGate({ children }: { children: ReactNode }) {
   const target = expectedHash();
@@ -26,7 +27,7 @@ export function PasscodeGate({ children }: { children: ReactNode }) {
 
   return (
     <main className="passcode">
-      <h1>Film Log</h1>
+      <Wordmark tagline="Field notes" />
       <form onSubmit={submit}>
         <input
           type="password"

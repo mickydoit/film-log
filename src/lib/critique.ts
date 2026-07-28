@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { getCamera } from '../cameras';
 import { estimateShutter } from './exposure';
@@ -40,7 +41,16 @@ export async function requestCritique(shot: Shot, roll: Roll): Promise<Critique>
     },
   });
 
-  if (error) throw error;
+  if (error) {
+    // The thrown error carries the raw Response, not the parsed body, so the
+    // default message is a generic non-2xx complaint. Unwrap it: the function
+    // reports precisely what went wrong and the user can act on that.
+    if (error instanceof FunctionsHttpError) {
+      const body = await error.context.json().catch(() => null);
+      throw new Error(body?.error ?? error.message);
+    }
+    throw error;
+  }
   if ((data as { error?: string }).error) {
     throw new Error((data as { error: string }).error);
   }

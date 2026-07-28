@@ -97,7 +97,7 @@ export function FrameDetail({
       <section className="critique">
         <h2>What the scan says</h2>
 
-        {!shot.ai_critique && (
+        {!shot.ai_critique && !error && (
           <>
             <button
               type="button" className="primary"
@@ -159,7 +159,7 @@ export function FrameDetail({
   );
 }
 
-function formatValue(value: unknown): string {
+export function formatValue(value: unknown): string {
   if (value === true) return 'On';
   if (value === false) return 'Off';
   if (value === undefined || value === null || value === '') return '—';

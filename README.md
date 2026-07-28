@@ -40,3 +40,16 @@ relying on the passcode to keep the log private.
 Supabase project `ahecfusgkzzjpbxgvjmh`, tables `film_rolls` and `film_shots`,
 private storage bucket `film-scans`. The Groq API key lives only as a secret on
 the `film-critique` Edge Function and never reaches the browser.
+
+**Note:** `GROQ_API_KEY` is not set yet. Until it is added in Supabase under
+Project Settings → Edge Functions → Secrets, the critique button reports
+`GROQ_API_KEY is not configured` and everything else works normally.
+
+## Status
+
+The log, scans and roll summary work. Outstanding before this is properly live:
+
+- `GROQ_API_KEY` secret, for the AI critique (above)
+- `VITE_PASSCODE_HASH`, without which the app is ungated (above)
+- The deploy workflow needs a GitHub token carrying the `workflow` scope
+  before it can be pushed: `gh auth refresh -h github.com -s workflow`

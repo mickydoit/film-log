@@ -1,12 +1,22 @@
 export type CameraId = 'olympus-xa' | 'pentax-17';
 
-export type Zone = { label: string; range: string };
+export type Zone = {
+  label: string;
+  range: string;
+  /** Key of the pictogram printed on the lens barrel. See Glyph.tsx. */
+  glyph?: string;
+};
 
 export type SelectControl = {
   id: string;
   label: string;
   type: 'select';
   values: string[];
+  /**
+   * Value -> key of the marking actually printed on the camera. Where a
+   * camera prints a symbol rather than a word, the control shows the symbol.
+   */
+  glyphs?: Record<string, string>;
   hint?: string;
 };
 

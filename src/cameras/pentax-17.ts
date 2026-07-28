@@ -24,6 +24,17 @@ export const pentax17: CameraSpec = {
         'Daylight sync',
         'Slow-speed sync',
       ],
+      // The dial is mostly lettering — AUTO, P, BOKEH, B — with symbols only
+      // for the slow-speed and the two flash positions.
+      glyphs: {
+        'Full Auto': 'auto',
+        'Standard': 'program',
+        'Slow-speed': 'moon',
+        'Max-aperture (Bokeh)': 'bokeh',
+        'Bulb': 'bulb',
+        'Daylight sync': 'flash-day',
+        'Slow-speed sync': 'flash-slow',
+      },
       hint: 'Full Auto ignores the focus ring. Bokeh opens the lens as wide as it can.',
     },
     {
@@ -31,12 +42,12 @@ export const pentax17: CameraSpec = {
       label: 'Focus zone',
       type: 'zone',
       values: [
-        { label: 'Macro', range: '0.24–0.26 m' },
-        { label: 'Tabletop', range: '0.47–0.54 m' },
-        { label: 'Extremely close', range: '1.0–1.4 m' },
-        { label: 'Close', range: '1.4–2.2 m' },
-        { label: 'Medium', range: '2.1–5.3 m' },
-        { label: 'Far', range: '5.1 m – ∞' },
+        { label: 'Macro', range: '0.24–0.26 m', glyph: 'flower' },
+        { label: 'Tabletop', range: '0.47–0.54 m', glyph: 'cutlery' },
+        { label: 'Extremely close', range: '1.0–1.4 m', glyph: 'person' },
+        { label: 'Close', range: '1.4–2.2 m', glyph: 'people-two' },
+        { label: 'Medium', range: '2.1–5.3 m', glyph: 'people-three' },
+        { label: 'Far', range: '5.1 m – ∞', glyph: 'mountain' },
       ],
       hint: 'Estimate the distance to your subject and pick the zone containing it.',
     },

@@ -26,7 +26,9 @@ export function ControlRenderer({
 
           {control.type === 'select' && (
             <OptionRow
-              options={control.values.map(v => ({ key: v, label: v }))}
+              options={control.values.map(v => ({
+                key: v, label: v, glyph: control.glyphs?.[v],
+              }))}
               selectedKey={String(value[control.id] ?? '')}
               onSelect={v => set(control.id, v)}
             />
@@ -35,7 +37,7 @@ export function ControlRenderer({
           {control.type === 'zone' && (
             <OptionRow
               options={control.values.map(z => ({
-                key: z.label, label: z.label, sublabel: z.range,
+                key: z.label, label: z.label, sublabel: z.range, glyph: z.glyph,
               }))}
               selectedKey={String(value[control.id] ?? '')}
               onSelect={v => set(control.id, v)}

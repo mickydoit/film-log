@@ -63,8 +63,34 @@ describe('pentax 17 spec', () => {
     const zone = p17.controls.find(c => c.id === 'zone') as any;
     expect(zone.type).toBe('zone');
     expect(zone.values).toHaveLength(6);
-    expect(zone.values[0]).toEqual({ label: 'Macro', range: '0.24–0.26 m' });
-    expect(zone.values[5]).toEqual({ label: 'Far', range: '5.1 m – ∞' });
+    expect(zone.values[0]).toEqual(
+      { label: 'Macro', range: '0.24–0.26 m', glyph: 'flower' });
+    expect(zone.values[5]).toEqual(
+      { label: 'Far', range: '5.1 m – ∞', glyph: 'mountain' });
+  });
+
+  it('carries the pictogram printed on the lens barrel for every zone', () => {
+    // Flower, cutlery, then one/two/three people, then a mountain — the
+    // engraving order on the real barrel, nearest to furthest.
+    const zone = p17.controls.find(c => c.id === 'zone') as any;
+    expect(zone.values.map((z: any) => z.glyph)).toEqual([
+      'flower', 'cutlery', 'person', 'people-two', 'people-three', 'mountain',
+    ]);
+  });
+
+  it('carries the marking printed on every mode dial position', () => {
+    // AUTO, P, BOKEH and B are lettering on the dial; the slow-speed and the
+    // two flash positions are symbols.
+    const mode = p17.controls.find(c => c.id === 'mode') as any;
+    expect(mode.glyphs).toEqual({
+      'Full Auto': 'auto',
+      'Standard': 'program',
+      'Slow-speed': 'moon',
+      'Max-aperture (Bokeh)': 'bokeh',
+      'Bulb': 'bulb',
+      'Daylight sync': 'flash-day',
+      'Slow-speed sync': 'flash-slow',
+    });
   });
 
   it('has no aperture control, because the camera chooses it', () => {

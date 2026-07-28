@@ -82,6 +82,39 @@ describe('ControlRenderer', () => {
     expect(screen.getByRole('button', { name: '0' })).toBeInTheDocument();
   });
 
+  it('shows the camera markings for the Pentax rather than my wording', () => {
+    render(
+      <ControlRenderer
+        controls={getCamera('pentax-17').controls}
+        value={{ mode: 'Standard', zone: 'Close', expcomp: 0, flash: false }}
+        onChange={vi.fn()}
+      />,
+    );
+    // The dial is lettered AUTO / P / BOKEH / B, so that is what shows.
+    expect(screen.getByText('AUTO')).toBeInTheDocument();
+    expect(screen.getByText('BOKEH')).toBeInTheDocument();
+    // And my invented phrasing does not appear anywhere.
+    expect(screen.queryByText('Full Auto')).not.toBeInTheDocument();
+    expect(screen.queryByText('Max-aperture (Bokeh)')).not.toBeInTheDocument();
+  });
+
+  it('keeps the meaning as the accessible name behind a pictogram', () => {
+    const onChange = vi.fn();
+    render(
+      <ControlRenderer
+        controls={getCamera('pentax-17').controls}
+        value={{ mode: 'Standard', zone: 'Close', expcomp: 0, flash: false }}
+        onChange={onChange}
+      />,
+    );
+    // The zone shows a mountain, but it is still announced and selectable
+    // as "Far" — a picture must not cost a screen reader the meaning.
+    const far = screen.getByRole('button', { name: 'Far' });
+    expect(far).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Close' }))
+      .toHaveAttribute('aria-pressed', 'true');
+  });
+
   it('toggles a boolean control', async () => {
     const onChange = vi.fn();
     render(

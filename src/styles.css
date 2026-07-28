@@ -370,3 +370,26 @@ h3 { font-size: 1rem; letter-spacing: 0.04em; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
 }
+
+/* ---- Camera markings -------------------------------------------------- */
+/*
+ * The Pentax 17's own dial and lens engravings. Sized to sit on the same
+ * baseline as a text option so a row of mixed controls stays even.
+ */
+
+.option-glyph { min-height: 3.6rem; }
+
+.glyph {
+  display: flex; align-items: center; justify-content: center;
+  height: 1.5rem;
+  font-family: var(--display);
+  font-size: 1.1rem; letter-spacing: .06em; line-height: 1;
+}
+.glyph-word { font-size: .82rem; letter-spacing: .1em; }
+.glyph-svg { height: 100%; width: auto; display: block; }
+
+/* Dial colour coding: AUTO is blue on the camera, the flash positions
+   orange. Selected tiles fill with bone, so the inherited dark text must
+   win — hence scoping these to the unselected state only. */
+.option[aria-pressed='false'] .glyph-auto  { color: #93b7cc; }
+.option[aria-pressed='false'] .glyph-flash { color: #e0a074; }

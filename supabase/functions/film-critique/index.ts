@@ -72,43 +72,54 @@ Deno.serve(async (req) => {
   }];
 
   let content: string | undefined;
-  let lastError = '';
+  const errors: string[] = [];
 
-  for (const model of VISION_MODELS) {
-    const groqResponse = await fetch(GROQ_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0.3,
-        max_tokens: 1200,
-        response_format: { type: 'json_object' },
-        messages,
-      }),
-    });
+  for (let i = 0; i < VISION_MODELS.length; i++) {
+    const model = VISION_MODELS[i];
+    const isLast = i === VISION_MODELS.length - 1;
+
+    let groqResponse: Response;
+    try {
+      groqResponse = await fetch(GROQ_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0.3,
+          max_tokens: 1200,
+          response_format: { type: 'json_object' },
+          messages,
+        }),
+      });
+    } catch (e) {
+      // Network-level failure: DNS, timeout, connection reset.
+      errors.push(`${model}: ${(e as Error).message}`);
+      if (isLast) return json({ error: 'Could not reach Groq', detail: errors.join(' | ') }, 502);
+      continue;
+    }
 
     if (groqResponse.ok) {
       const body = await groqResponse.json();
       const candidate = body.choices?.[0]?.message?.content;
       if (typeof candidate === 'string') { content = candidate; break; }
-      lastError = `${model}: returned no content`;
+      errors.push(`${model}: returned no content`);
+      if (isLast) break;
       continue;
     }
 
-    // A retired or unavailable model should fall through to the next one;
-    // anything else is a real failure worth surfacing immediately.
-    const detail = await groqResponse.text();
-    const retryable = groqResponse.status === 404 || groqResponse.status === 429
-      || /not found|not support|decommission/i.test(detail);
-    lastError = `${model}: ${detail}`;
-    if (!retryable) return json({ error: 'Groq request failed', detail }, 502);
+    // Any non-2xx: try the next model rather than guessing from the error
+    // text whether this model is unavailable. Groq's wording varies, and a
+    // regex that misses a phrasing would strand the fallback on the first
+    // model. Only the last model's failure is terminal.
+    errors.push(`${model}: ${await groqResponse.text()}`);
+    if (isLast) return json({ error: 'Groq request failed', detail: errors.join(' | ') }, 502);
   }
 
   if (typeof content !== 'string') {
-    return json({ error: 'No vision model was available', detail: lastError }, 502);
+    return json({ error: 'No vision model was available', detail: errors.join(' | ') }, 502);
   }
 
   let critique: unknown;

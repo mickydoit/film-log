@@ -115,3 +115,6 @@ button { font: inherit; color: inherit; }
   display: flex; flex-direction: column; align-items: flex-start;
   gap: .2rem; width: 100%; text-align: left; cursor: pointer;
 }
+
+.startframe { display: flex; align-items: center; gap: .75rem; margin-bottom: .5rem; }
+.startframe .text-input { width: 6rem; }

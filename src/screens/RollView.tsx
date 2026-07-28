@@ -4,23 +4,10 @@ import { listShots, createShot, updateShot } from '../lib/shots';
 import { updateRoll } from '../lib/rolls';
 import { uploadScan, signedScanUrl } from '../lib/scans';
 import { splitImage, looksLikeFramePair, loadImage } from '../lib/halfFrame';
+import { planScans } from './scanPlan';
 import type { Roll, RollStatus, Shot } from '../lib/types';
 
 const STATUSES: RollStatus[] = ['shooting', 'finished', 'developing', 'scanned'];
-
-/** How many of these files look like side-by-side half-frame pairs. */
-async function countLikelyPairs(files: File[]): Promise<number> {
-  let pairs = 0;
-  for (const file of files) {
-    try {
-      const img = await loadImage(file);
-      if (looksLikeFramePair(img.naturalWidth, img.naturalHeight)) pairs++;
-    } catch {
-      // Unreadable files are reported later, during the upload pass.
-    }
-  }
-  return pairs;
-}
 
 export function RollView({
   roll, onBack, onOpenFrame,
@@ -36,6 +23,7 @@ export function RollView({
   const [busy, setBusy] = useState<string | null>(null);
   const [failures, setFailures] = useState<string[]>([]);
   const [splitPairs, setSplitPairs] = useState(camera.format === 'half');
+  const [startFrame, setStartFrame] = useState(1);
 
   const refresh = useCallback(async () => {
     const loaded = await listShots(roll.id);
@@ -60,53 +48,80 @@ export function RollView({
    * portrait half-frames is about 1.42 wide; a single half-frame that the lab
    * rotated because the shot was taken with the camera turned on its side is
    * about 1.41. They are indistinguishable. Splitting a rotated single cuts
-   * the photograph in half, so the count is confirmed with the user first
-   * rather than assumed — they can see whether the arithmetic matches the
-   * roll they actually shot.
+   * the photograph in half, and uploads overwrite by frame number, so the
+   * whole plan is worked out and confirmed before anything is written.
    */
   async function handleFiles(files: FileList) {
     const sorted = Array.from(files).sort((a, b) => a.name.localeCompare(b.name));
     setFailures([]);
 
-    if (splitPairs) {
-      const pairs = await countLikelyPairs(sorted);
-      const frames = pairs * 2 + (sorted.length - pairs);
-      const ok = window.confirm(
-        `${sorted.length} file${sorted.length === 1 ? '' : 's'} → ${frames} frames.\n\n` +
-        `${pairs} look like side-by-side pairs and will be split in half.\n\n` +
-        `If you turned the camera on its side for any of these, the lab may have ` +
-        `rotated them, and splitting would cut the photo in half. Cancel and ` +
-        `untick "each file holds two half-frames" if that is the case.`,
-      );
-      if (!ok) return;
-    }
-
-    let frame = 1;
-
+    // Measure every file ONCE. The plan the user confirms is then exactly the
+    // plan that runs — no second decode that could disagree with the first.
+    const unreadable: string[] = [];
+    const measured: { file: File; isPair: boolean }[] = [];
     for (const file of sorted) {
-      setBusy(file.name);
       try {
         const img = await loadImage(file);
-        const isPair =
-          splitPairs && looksLikeFramePair(img.naturalWidth, img.naturalHeight);
-        const pieces: Blob[] = isPair ? await splitImage(file) : [file];
+        measured.push({
+          file,
+          isPair: splitPairs && looksLikeFramePair(img.naturalWidth, img.naturalHeight),
+        });
+      } catch {
+        unreadable.push(`${file.name}: could not be read`);
+      }
+    }
+    if (unreadable.length > 0) setFailures(unreadable);
+    if (measured.length === 0) return;
 
-        for (const piece of pieces) {
-          if (frame > roll.frame_capacity) break;
-          const path = await uploadScan(roll.id, frame, piece);
-          const existing = shots.find(s => s.frame_number === frame);
+    const plan = planScans(measured, startFrame, roll.frame_capacity);
+    const last = startFrame + plan.frames - 1;
+
+    const lines = [
+      `${measured.length} file${measured.length === 1 ? '' : 's'} → ` +
+      `${plan.frames} frame${plan.frames === 1 ? '' : 's'} ` +
+      `(${startFrame} to ${last}).`,
+    ];
+    if (plan.pairs > 0) {
+      lines.push(
+        `${plan.pairs} will be cut in half. If you turned the camera on its ` +
+        `side for any of these, the lab may have rotated them, and splitting ` +
+        `would cut the photo in half.`,
+      );
+    }
+    if (plan.dropped > 0) {
+      lines.push(
+        `${plan.dropped} would fall past the end of this ` +
+        `${roll.frame_capacity}-frame roll and will be skipped.`,
+      );
+    }
+    lines.push('Anything already on these frames will be replaced.');
+
+    if (!window.confirm(lines.join('\n\n'))) return;
+
+    let uploaded = 0;
+    for (const assignment of plan.assignments) {
+      const { file } = measured[assignment.index];
+      setBusy(file.name);
+      try {
+        const pieces: Blob[] =
+          assignment.frames.length === 2 ? await splitImage(file) : [file];
+
+        for (let i = 0; i < assignment.frames.length; i++) {
+          const frameNumber = assignment.frames[i];
+          const path = await uploadScan(roll.id, frameNumber, pieces[i]);
+          const existing = shots.find(s => s.frame_number === frameNumber);
           if (existing) {
             await updateShot(existing.id, { scan_path: path });
           } else {
             // A frame that was shot but never logged still deserves its scan.
             const made = await createShot({
-              roll_id: roll.id, frame_number: frame, settings: {},
+              roll_id: roll.id, frame_number: frameNumber, settings: {},
               light: null, subject: null,
               shot_at: new Date().toISOString(),
             });
             await updateShot(made.id, { scan_path: path });
           }
-          frame++;
+          uploaded++;
         }
       } catch (e) {
         // Report rather than swallow — a silently missing scan is worse than
@@ -116,7 +131,8 @@ export function RollView({
     }
 
     setBusy(null);
-    if (status !== 'scanned') { await changeStatus('scanned'); }
+    // Only claim the roll is scanned if something actually landed.
+    if (uploaded > 0 && status !== 'scanned') await changeStatus('scanned');
     await refresh();
   }
 
@@ -155,6 +171,19 @@ export function RollView({
 
       <fieldset className="control">
         <legend>Scans</legend>
+        <label className="startframe">
+          Start at frame
+          <input
+            className="text-input" type="number" min={1} max={roll.frame_capacity}
+            value={startFrame}
+            onChange={e => setStartFrame(Math.max(1, Number(e.target.value) || 1))}
+          />
+        </label>
+        <p className="hint">
+          Leave at 1 for a whole roll. Set it if you are re-uploading a few
+          frames from the middle — uploads replace whatever is on the frames
+          they land on.
+        </p>
         <label
           className="dropzone"
           onDragOver={e => e.preventDefault()}

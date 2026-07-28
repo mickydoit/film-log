@@ -3,13 +3,19 @@ import { buildPrompt, type ShotContext } from './prompt.ts';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 /**
- * Tried in order. Groq rotates vision models, and the sibling analyze-food
- * function on this project confirms llama-4-scout works on this account, so
- * it backs up the current documented model. GROQ_MODEL overrides the list.
+ * Tried in order. Checked against GET /v1/models on 2026-07-28: qwen3.6-27b is
+ * the only vision-capable model on this account — every llama vision model has
+ * been decommissioned, which is also why the sibling analyze-food function's
+ * scanning is currently broken.
+ *
+ * Groq rotates these often. When critiques start failing, list the current
+ * models and put a working one in the GROQ_MODEL secret, which overrides this
+ * list without a redeploy:
+ *   curl -s https://api.groq.com/openai/v1/models -H "Authorization: Bearer $KEY"
  */
 const VISION_MODELS = Deno.env.get('GROQ_MODEL')
   ? [Deno.env.get('GROQ_MODEL')!]
-  : ['qwen/qwen3.6-27b', 'meta-llama/llama-4-scout-17b-16e-instruct'];
+  : ['qwen/qwen3.6-27b'];
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',

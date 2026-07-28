@@ -17,6 +17,55 @@ const VISION_MODELS = Deno.env.get('GROQ_MODEL')
   ? [Deno.env.get('GROQ_MODEL')!]
   : ['qwen/qwen3.6-27b'];
 
+/**
+ * Groq's free tier on this account, read from the response headers:
+ * 8000 tokens a minute and 1000 requests a day. One critique costs about
+ * 2800 tokens, so the per-minute ceiling binds first — roughly two a minute.
+ *
+ * This function is publicly callable, so the quota is enforced in the
+ * database where a caller cannot bypass it. Both values are overridable
+ * without a redeploy.
+ */
+const DAILY_LIMIT = Number(Deno.env.get('CRITIQUE_DAILY_LIMIT') ?? 100);
+const MIN_SECONDS = Number(Deno.env.get('CRITIQUE_MIN_SECONDS') ?? 25);
+
+type Slot = {
+  allowed: boolean;
+  reason?: 'daily' | 'cooldown';
+  wait?: number;
+  used: number;
+  limit: number;
+};
+
+/** Claim one critique against today's budget. Fails closed. */
+async function takeSlot(): Promise<Slot> {
+  const url = Deno.env.get('SUPABASE_URL');
+  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!url || !key) {
+    // Without the counter we cannot know the budget, so refuse rather than
+    // let an unmetered call through to a paid API.
+    return { allowed: false, reason: 'daily', used: 0, limit: DAILY_LIMIT };
+  }
+
+  const res = await fetch(`${url}/rest/v1/rpc/film_critique_take_slot`, {
+    method: 'POST',
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      p_daily_limit: DAILY_LIMIT,
+      p_min_seconds: MIN_SECONDS,
+    }),
+  });
+
+  if (!res.ok) {
+    return { allowed: false, reason: 'daily', used: 0, limit: DAILY_LIMIT };
+  }
+  return await res.json() as Slot;
+}
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -64,6 +113,21 @@ Deno.serve(async (req) => {
   const { imageBase64, context } = payload;
   if (!imageBase64 || !context) {
     return json({ error: 'imageBase64 and context are both required' }, 400);
+  }
+
+  // Claimed before the image is sent anywhere, so a refused request costs
+  // nothing against the Groq quota.
+  const slot = await takeSlot();
+  if (!slot.allowed) {
+    return json({
+      error: slot.reason === 'cooldown'
+        ? `Too quick — the free Groq tier allows about two critiques a minute. Try again in ${slot.wait ?? MIN_SECONDS}s.`
+        : `That is today's ${slot.limit} critiques used. The budget resets at midnight UTC.`,
+      reason: slot.reason,
+      wait: slot.wait,
+      used: slot.used,
+      limit: slot.limit,
+    }, 429);
   }
 
   const messages = [{

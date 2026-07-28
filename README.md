@@ -53,3 +53,16 @@ The log, scans and roll summary work. Outstanding before this is properly live:
 - `VITE_PASSCODE_HASH`, without which the app is ungated (above)
 - The deploy workflow needs a GitHub token carrying the `workflow` scope
   before it can be pushed: `gh auth refresh -h github.com -s workflow`
+
+## API budget
+
+The critique runs on Groq's free tier: 8,000 tokens a minute and 1,000
+requests a day. One critique costs about 2,800 tokens, so roughly two a
+minute is the ceiling.
+
+The Edge Function is publicly callable, so the budget is enforced in the
+database (`film_critique_take_slot`) rather than in the browser, where a
+caller could bypass it. Defaults are 100 critiques a day and 25 seconds
+between them; a refused request never reaches Groq, so it costs nothing.
+Both are overridable without a redeploy via the `CRITIQUE_DAILY_LIMIT` and
+`CRITIQUE_MIN_SECONDS` Edge Function secrets.

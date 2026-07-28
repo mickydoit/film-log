@@ -84,22 +84,42 @@ Deno.serve(async (req) => {
     const model = VISION_MODELS[i];
     const isLast = i === VISION_MODELS.length - 1;
 
+    /**
+     * qwen3.6 is a reasoning model: left to itself it emits a long <think>
+     * block, exhausts the token budget before writing any JSON, and Groq
+     * rejects the call with json_validate_failed and an EMPTY
+     * failed_generation — which looks like a model fault rather than a
+     * reasoning one. Turning reasoning off fixes it and cuts a critique to
+     * ~400 completion tokens.
+     *
+     * Not every model accepts reasoning_effort, so if one rejects the
+     * parameter the same request is retried without it.
+     */
+    const send = (withReasoningEffort: boolean) => fetch(GROQ_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.3,
+        // Comfortably above the ~400 a critique needs, and well inside the
+        // free tier's 8k tokens/minute alongside a ~1800-token image.
+        max_tokens: 2000,
+        response_format: { type: 'json_object' },
+        ...(withReasoningEffort ? { reasoning_effort: 'none' } : {}),
+        messages,
+      }),
+    });
+
     let groqResponse: Response;
     try {
-      groqResponse = await fetch(GROQ_URL, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model,
-          temperature: 0.3,
-          max_tokens: 1200,
-          response_format: { type: 'json_object' },
-          messages,
-        }),
-      });
+      groqResponse = await send(true);
+      if (groqResponse.status === 400) {
+        const body = await groqResponse.clone().text();
+        if (/reasoning/i.test(body)) groqResponse = await send(false);
+      }
     } catch (e) {
       // Network-level failure: DNS, timeout, connection reset.
       errors.push(`${model}: ${(e as Error).message}`);
@@ -120,8 +140,19 @@ Deno.serve(async (req) => {
     // text whether this model is unavailable. Groq's wording varies, and a
     // regex that misses a phrasing would strand the fallback on the first
     // model. Only the last model's failure is terminal.
-    errors.push(`${model}: ${await groqResponse.text()}`);
-    if (isLast) return json({ error: 'Groq request failed', detail: errors.join(' | ') }, 502);
+    const detail = await groqResponse.text();
+    errors.push(`${model}: ${detail}`);
+    if (isLast) {
+      // The free tier allows 8k tokens a minute and one critique uses most of
+      // it, so this is the failure a real user hits — say what to do about it.
+      const rateLimited = groqResponse.status === 429;
+      return json({
+        error: rateLimited
+          ? 'Groq rate limit reached — wait a minute and try again.'
+          : 'Groq request failed',
+        detail: errors.join(' | '),
+      }, 502);
+    }
   }
 
   if (typeof content !== 'string') {

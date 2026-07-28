@@ -66,3 +66,9 @@ caller could bypass it. Defaults are 100 critiques a day and 25 seconds
 between them; a refused request never reaches Groq, so it costs nothing.
 Both are overridable without a redeploy via the `CRITIQUE_DAILY_LIMIT` and
 `CRITIQUE_MIN_SECONDS` Edge Function secrets.
+
+## Credits
+
+The background chart uses [Natural Earth](https://www.naturalearthdata.com/)
+110m land polygons (public domain), projected equirectangular and simplified
+to about 9 KB gzipped. Headings are set in Anton.

@@ -173,11 +173,29 @@ h3 { font-size: 1rem; letter-spacing: 0.04em; }
   letter-spacing: .1em; text-transform: uppercase; font-size: .92rem;
 }
 .card-actions button:hover { background: var(--surface-lift); }
-.primary {
-  background: var(--accent); color: var(--on-accent); border-color: var(--accent);
+
+/* The doubled class is deliberate. `.card-actions button` is specificity
+   0,1,1 and a plain `.primary` is 0,1,0, so inside a card-actions row the
+   fill was being dropped while the dark text stayed — dark on dark, which
+   is invisible. `.primary.primary` is 0,2,0 and wins wherever it sits. */
+.primary.primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+  font-weight: 400;
 }
-.primary:hover { background: #f3efdd; }
-.primary:disabled { opacity: .45; cursor: not-allowed; }
+.primary.primary:hover { background: #f3efdd; }
+
+/* Disabled must still be readable — it says "this roll is full", which is
+   information. Dimming the whole button to 45% hid that. */
+.primary.primary:disabled,
+.card-actions button:disabled {
+  background: var(--surface-lift);
+  /* Lighter than --muted, which only reached 4.32:1 on this fill. */
+  color: #adb19a;
+  border-color: var(--line);
+  cursor: not-allowed;
+}
 
 .link {
   min-height: 3rem; padding: 0 .5rem;

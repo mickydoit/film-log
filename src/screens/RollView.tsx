@@ -5,6 +5,7 @@ import { updateRoll } from '../lib/rolls';
 import { uploadScan, signedScanUrl } from '../lib/scans';
 import { splitImage, looksLikeFramePair, loadImage } from '../lib/halfFrame';
 import { planScans } from './scanPlan';
+import { RollSummary } from './RollSummary';
 import type { Roll, RollStatus, Shot } from '../lib/types';
 
 const STATUSES: RollStatus[] = ['shooting', 'finished', 'developing', 'scanned'];
@@ -211,6 +212,8 @@ export function RollView({
           </label>
         )}
       </fieldset>
+
+      {status === 'scanned' && <RollSummary roll={roll} shots={shots} />}
 
       <div className="frame-grid">
         {Array.from({ length: roll.frame_capacity }, (_, i) => i + 1).map(n => {

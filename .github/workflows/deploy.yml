@@ -23,7 +23,14 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # src/lib/supabase.ts fails fast on import when these are missing, so
+      # the suite needs them present even though every test mocks the network.
+      # Deliberately placeholders, not the real secrets: tests must never
+      # depend on production credentials, and must run in a fork or a clone.
       - run: npm test
+        env:
+          VITE_SUPABASE_URL: https://placeholder.supabase.co
+          VITE_SUPABASE_KEY: placeholder-key-not-used-by-tests
       - run: npm run build
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
